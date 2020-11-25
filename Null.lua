@@ -3,7 +3,7 @@ local Material = require "Material"
 local Null = {}
 
 function Null.new()
-	local self = Material()
+	local self = Material{}
 	
 	return setmetatable(self, {
 		__index = Null,

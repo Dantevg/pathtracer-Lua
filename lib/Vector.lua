@@ -4,6 +4,8 @@ local Vector = {}
 
 
 
+Vector.mt = {}
+
 Vector.map = {
 	x = 1, r = 1, h = 1,
 	y = 2, g = 2, s = 2,
@@ -17,29 +19,7 @@ function Vector.new(...)
 	local self = {}
 	self.items = List{...}
 	
-	return setmetatable(self, {
-		__index = function(t, k)
-			if type(k) == "number" then
-				return self.items[k]
-			elseif Vector.map[k] then
-				return self.items[ Vector.map[k] ]
-			else
-				return Vector[k] -- Default behaviour
-			end
-		end,
-		__newindex = function(t, k, v)
-			if type(k) == "number" then
-				self.items[k] = v
-			elseif Vector.map[k] then
-				self.items[ Vector.map[k] ] = v
-			else
-				self[k] = v -- Default behaviour
-			end
-		end,
-		__tostring = function(self)
-			return "Vector ["..table.concat(self.items, ", ").."]"
-		end,
-	})
+	return setmetatable(self, Vector.mt)
 end
 
 
@@ -157,38 +137,40 @@ end
 
 
 function Vector.negative(v)
-	return self( table.unpack(v.items:map(function(val) return -val end)) )
+	return Vector( table.unpack(v.items:map(function(val) return -val end)) )
 end
 function Vector.add( a, b )
-	if getmetatable(b).__name == "Vector" then
-		return self( table.unpack(a.items:map(function(val, i) return val + b.items[i] end)) )
+	if getmetatable(b) and getmetatable(b).__name == "Vector" then
+		return Vector( table.unpack(a.items:map(function(val, i) return val + b.items[i] end)) )
 	else
-		return self( table.unpack(a.items:map(function(val) return val + b end)) )
+		return Vector( table.unpack(a.items:map(function(val) return val + b end)) )
 	end
 end
 function Vector.subtract( a, b )
-	if getmetatable(b).__name == "Vector" then
-		return self( table.unpack(a.items:map(function(val, i) return val - b.items[i] end)) )
+	if getmetatable(b) and getmetatable(b).__name == "Vector" then
+		return Vector( table.unpack(a.items:map(function(val, i) return val - b.items[i] end)) )
 	else
-		return self( table.unpack(a.items:map(function(val) return val - b end)) )
+		return Vector( table.unpack(a.items:map(function(val) return val - b end)) )
 	end
 end
 function Vector.multiply( a, b )
-	if getmetatable(b).__name == "Vector" then
-		return self( table.unpack(a.items:map(function(val, i) return val * b.items[i] end)) )
+	if getmetatable(b) and getmetatable(b).__name == "Vector" then
+		return Vector( table.unpack(a.items:map(function(val, i) return val * b.items[i] end)) )
 	else
-		return self( table.unpack(a.items:map(function(val) return val * b end)) )
+		return Vector( table.unpack(a.items:map(function(val) return val * b end)) )
 	end
 end
 function Vector.divide( a, b )
-	if getmetatable(b).__name == "Vector" then
-		return self( table.unpack(a.items:map(function(val, i) return val / b.items[i] end)) )
+	if getmetatable(b) and getmetatable(b).__name == "Vector" then
+		return Vector( table.unpack(a.items:map(function(val, i) return val / b.items[i] end)) )
 	else
-		return self( table.unpack(a.items:map(function(val) return val / b end)) )
+		return Vector( table.unpack(a.items:map(function(val) return val / b end)) )
 	end
 end
 function Vector.equals( a, b )
-	if getmetatable(b).__name ~= "Vector" or getmetatable(b).__name ~= "Vector" or #a.items ~= #b.items then
+	if not getmetatable(a) or getmetatable(a).__name ~= "Vector"
+			or not getmetatable(b) or getmetatable(b).__name ~= "Vector"
+			or #a.items ~= #b.items then
 		return false
 	end
 	return a.items:every(function(val, i) return val == b.items[i] end)
@@ -206,61 +188,92 @@ function Vector.cross( a, b )
 	return Vector( x, y, z )
 end
 function Vector.normalize(v)
-	return self.divide( v, v:length() )
+	return Vector.divide( v, v:length() )
 end
 function Vector.distSq( a, b )
 	return a.items:map(function(val, i) return (val-b.items[i])^2 end):reduce(function(a,b) return a+b end)
 end
 function Vector.dist( a, b )
-	return math.sqrt( self:distSq(a, b) )
+	return math.sqrt( Vector.distSq(a, b) )
 end
 function Vector.clone(v)
-	return self( table.unpack(v.items) )
+	return Vector( table.unpack(v.items) )
 end
 function Vector.rotate( v, angle )
 	local x = v.x * math.cos(angle) - v.y * math.sin(angle)
 	local y = v.x * math.sin(angle) + v.y * math.cos(angle)
-	return self( x, y )
+	return Vector( x, y )
 end
 function Vector.rotateX( v, angle )
 	local x = v.x * math.cos(angle) - v.y * math.sin(angle)
 	local y = v.x * math.sin(angle) + v.y * math.cos(angle)
 	local z = v.z
-	return self( x, y, z )
+	return Vector( x, y, z )
 end
 function Vector.rotateY( v, angle )
 	local x = v.x * math.cos(angle) + v.z * math.sin(angle)
 	local y = v.y
 	local z = -v.x * math.sin(angle) + v.z * math.cos(angle)
-	return self( x, y, z )
+	return Vector( x, y, z )
 end
 function Vector.rotateZ( v, angle )
 	local x = v.x
 	local y = v.y * math.cos(angle) - v.z * math.sin(angle)
 	local z = v.y * math.sin(angle) + v.z * math.cos(angle)
-	return self( x, y, z )
+	return Vector( x, y, z )
 end
 function Vector.average(v)
 	return v.items:reduce(function(a,b) return a+b end) / #v.items
 end
 function Vector.fromAngle(angle)
-	return self( math.cos(angle), math.sin(angle) )
+	return Vector( math.cos(angle), math.sin(angle) )
 end
 function Vector.fromAngles3D( theta, phi )
 	local x = math.sin(theta) * math.cos(phi)
 	local y = math.sin(theta) * math.sin(phi)
 	local z = math.cos(theta)
-	return self( x, y, z )
+	return Vector( x, y, z )
 end
 function Vector.random(n)
-	return self( table.unpack(List.from(n or 2, function() return math.random() end)) )
+	return Vector( table.unpack(List.from(n or 2, function() return math.random() end)) )
 end
 function Vector.random2DAngle()
-	return self.fromAngle( math.random()*math.pi*2 )
+	return Vector.fromAngle( math.random()*math.pi*2 )
 end
 function Vector.random3DAngles()
-	return self.fromAngles3D( math.acos( 1 - 2*math.random() ), math.random()*math.pi*2 )
+	return Vector.fromAngles3D( math.acos( 1 - 2*math.random() ), math.random()*math.pi*2 )
 end
+
+
+
+Vector.mt.__index = function(self, k)
+	if type(k) == "number" then
+		return self.items[k]
+	elseif Vector.map[k] then
+		return self.items[ Vector.map[k] ]
+	else
+		return Vector[k] -- Default behaviour
+	end
+end
+Vector.mt.__newindex = function(self, k, v)
+	if type(k) == "number" then
+		self.items[k] = v
+	elseif Vector.map[k] then
+		self.items[ Vector.map[k] ] = v
+	else
+		self[k] = v -- Default behaviour
+	end
+end
+Vector.mt.__tostring = function(self)
+	return "Vector ["..table.concat(self.items, ", ").."]"
+end
+
+Vector.mt.__add = Vector.add
+Vector.mt.__sub = Vector.subtract
+Vector.mt.__mul = Vector.multiply
+Vector.mt.__div = Vector.divide
+Vector.mt.__unm = function(v) return Vector.multiply(v, -1) end
+Vector.mt.__eq = Vector.equals
 
 
 
