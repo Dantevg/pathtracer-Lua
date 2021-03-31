@@ -4,79 +4,71 @@ local Vector = {}
 
 
 
-Vector.mt = {}
-
-Vector.map = {
-	x = 1, r = 1, h = 1,
-	y = 2, g = 2, s = 2,
-	z = 3, b = 3, l = 3,
-	a = 4,
-}
-
-
-
 function Vector.new(...)
 	local self = {}
 	self.items = List{...}
 	
-	return setmetatable(self, Vector.mt)
+	return setmetatable(self, Vector)
 end
 
 
 
+function Vector.fromAngle(angle)
+	return Vector( math.cos(angle), math.sin(angle) )
+end
+function Vector.fromAngles3D(theta, phi)
+	local x = math.sin(theta) * math.cos(phi)
+	local y = math.sin(theta) * math.sin(phi)
+	local z = math.cos(theta)
+	return Vector(x, y, z)
+end
+function Vector.random(n)
+	return Vector( table.unpack(List.from(n or 2, function() return math.random() end)) )
+end
+function Vector.random2DAngle()
+	return Vector.fromAngle( math.random()*math.pi*2 )
+end
+function Vector.random3DAngles()
+	return Vector.fromAngles3D( math.acos(1 - 2*math.random()), math.random()*math.pi*2 )
+end
+
+
+
+function Vector:map(fn)
+	return Vector( table.unpack(self.items:map(fn)) )
+end
 function Vector:negative()
-	self.items = self.items:map(function(val) return -val end)
-	return self
+	return Vector( table.unpack(self.items:map(function(val) return -val end)) )
 end
-
-function Vector:add(v)
-	if getmetatable(v) == Vector.mt then
-		self.items = self.items:map(function(val, i) return val+v.items[i] end)
-	else
-		self.items = self.items:map(function(val) return val+v end)
+local function binop(op)
+	return function(self, v)
+		if type(v) == "table" then
+			return Vector( table.unpack(self.items:map(function(val, i) return op(val, v.items[i]) end)) )
+		else
+			return Vector( table.unpack(self.items:map(function(val, i) return op(val, v) end)) )
+		end
 	end
-	return self
 end
-function Vector:subtract(v)
-	if getmetatable(v) == Vector.mt then
-		self.items = self.items:map(function(val, i) return val-v.items[i] end)
-	else
-		self.items = self.items:map(function(val) return val-v end)
-	end
-	return self
-end
-function Vector:multiply(v)
-	if getmetatable(v) == Vector.mt then
-		self.items = self.items:map(function(val, i) return val*v.items[i] end)
-	else
-		self.items = self.items:map(function(val) return val*v end)
-	end
-	return self
-end
-function Vector:divide(v)
-	if getmetatable(v) == Vector.mt then
-		self.items = self.items:map(function(val, i) return (v.items[i] ~= 0) and val/v.items[i] or val end)
-	else
-		self.items = self.items:map(function(val) return (v ~= 0) and val/v or val end)
-	end
-	return self
-end
+Vector.add = binop(function(a, b) return a + b end)
+Vector.subtract = binop(function(a, b) return a - b end)
+Vector.multiply = binop(function(a, b) return a * b end)
+Vector.divide = binop(function(a, b) return a / b end)
 function Vector:equals(v)
-	if getmetatable(v) ~= Vector.mt or #v.items ~= #self.items then
+	if type(v) ~= "table" or #self.items ~= #v.items then
 		return false
 	end
 	return self.items:every(function(val, i) return val == v.items[i] end)
 end
 function Vector:dot(v)
-	return self.items:map(function(val, i) return val*v.items[i] end):reduce(function(a,b) return a+b end)
+	return self.items:map(function(val, i) return val*v.items[i] end):reduce(function(x,y) return x+y end)
 end
 function Vector:cross2(v)
 	return self.x * v.y - self.y * v.x
 end
 function Vector:cross(v)
-	local x = self.y * v.z - self.z * v.y
-	local y = self.z * v.x - self.x * v.z
-	local z = self.x * v.y - self.y * v.x
+	local x = self.y*v.z - self.z*v.y
+	local y = self.z*v.x - self.x*v.z
+	local z = self.x*v.y - self.y*v.x
 	return Vector( x, y, z )
 end
 function Vector:length()
@@ -84,6 +76,12 @@ function Vector:length()
 end
 function Vector:normalize()
 	return self:divide( self:length() )
+end
+function Vector:distSq(v)
+	return self.items:map(function(val, i) return (val-v.items[i])^2 end):reduce(function(x,y) return x+y end)
+end
+function Vector:dist(v)
+	return math.sqrt( self:distSq(v) )
 end
 function Vector:min()
 	return math.min(table.unpack(self.items))
@@ -111,24 +109,27 @@ function Vector:set(...)
 	return self
 end
 function Vector:rotate(angle)
-	local sin, cos = math.sin(angle), math.cos(angle)
-	self.x, self.y = self.x*cos - self.y*sin, self.x*sin + self.y*cos
-	return self
+	local x = self.x * math.cos(angle) - self.y * math.sin(angle)
+	local y = self.x * math.sin(angle) + self.y * math.cos(angle)
+	return Vector(x, y)
 end
 function Vector:rotateX(angle)
-	local sin, cos = math.sin(angle), math.cos(angle)
-	self.x, self.y, self.z = self.x*cos - self.y*sin, self.x*sin + self.y*cos, self.z
-	return self
+	local x = self.x * math.cos(angle) - self.y * math.sin(angle)
+	local y = self.x * math.sin(angle) + self.y * math.cos(angle)
+	local z = self.z
+	return Vector(x, y, z)
 end
 function Vector:rotateY(angle)
-	local sin, cos = math.sin(angle), math.cos(angle)
-	self.x, self.y, self.z = self.x*cos + self.z*sin, self.y, -self.x*sin + self.z*cos
-	return self
+	local x = self.x * math.cos(angle) + self.z * math.sin(angle)
+	local y = self.y
+	local z = -self.x * math.sin(angle) + self.z * math.cos(angle)
+	return Vector(x, y, z)
 end
 function Vector:rotateZ(angle)
-	local sin, cos = math.sin(angle), math.cos(angle)
-	self.x, self.y, self.z = self.x, self.y*cos - self.z*sin, self.y*sin + self.z*cos
-	return self
+	local x = self.x
+	local y = self.y * math.cos(angle) - self.z * math.sin(angle)
+	local z = self.y * math.sin(angle) + self.z * math.cos(angle)
+	return Vector(x, y, z)
 end
 function Vector:average()
 	return self.items:reduce(function(a,b) return a+b end) / #self.items
@@ -136,119 +137,17 @@ end
 
 
 
-function Vector.negative(v)
-	return Vector( table.unpack(v.items:map(function(val) return -val end)) )
-end
-function Vector.add( a, b )
-	if getmetatable(b) and getmetatable(b).__name == "Vector" then
-		return Vector( table.unpack(a.items:map(function(val, i) return val + b.items[i] end)) )
-	else
-		return Vector( table.unpack(a.items:map(function(val) return val + b end)) )
-	end
-end
-function Vector.subtract( a, b )
-	if getmetatable(b) and getmetatable(b).__name == "Vector" then
-		return Vector( table.unpack(a.items:map(function(val, i) return val - b.items[i] end)) )
-	else
-		return Vector( table.unpack(a.items:map(function(val) return val - b end)) )
-	end
-end
-function Vector.multiply( a, b )
-	if getmetatable(b) and getmetatable(b).__name == "Vector" then
-		return Vector( table.unpack(a.items:map(function(val, i) return val * b.items[i] end)) )
-	else
-		return Vector( table.unpack(a.items:map(function(val) return val * b end)) )
-	end
-end
-function Vector.divide( a, b )
-	if getmetatable(b) and getmetatable(b).__name == "Vector" then
-		return Vector( table.unpack(a.items:map(function(val, i) return val / b.items[i] end)) )
-	else
-		return Vector( table.unpack(a.items:map(function(val) return val / b end)) )
-	end
-end
-function Vector.equals( a, b )
-	if not getmetatable(a) or getmetatable(a).__name ~= "Vector"
-			or not getmetatable(b) or getmetatable(b).__name ~= "Vector"
-			or #a.items ~= #b.items then
-		return false
-	end
-	return a.items:every(function(val, i) return val == b.items[i] end)
-end
-function Vector.dot( a, b )
-	return a.items:map(function(val, i) return val*b.items[i] end):reduce(function(x,y) return x+y end)
-end
-function Vector.cross2( a, b )
-	return a.x * b.y - a.y * b.x
-end
-function Vector.cross( a, b )
-	local x = a.y*b.z - a.z*b.y
-	local y = a.z*b.x - a.x*b.z
-	local z = a.x*b.y - a.y*b.x
-	return Vector( x, y, z )
-end
-function Vector.normalize(v)
-	return Vector.divide( v, v:length() )
-end
-function Vector.distSq( a, b )
-	return a.items:map(function(val, i) return (val-b.items[i])^2 end):reduce(function(x,y) return x+y end)
-end
-function Vector.dist( a, b )
-	return math.sqrt( Vector.distSq(a, b) )
-end
-function Vector.clone(v)
-	return Vector( table.unpack(v.items) )
-end
-function Vector.rotate( v, angle )
-	local x = v.x * math.cos(angle) - v.y * math.sin(angle)
-	local y = v.x * math.sin(angle) + v.y * math.cos(angle)
-	return Vector( x, y )
-end
-function Vector.rotateX( v, angle )
-	local x = v.x * math.cos(angle) - v.y * math.sin(angle)
-	local y = v.x * math.sin(angle) + v.y * math.cos(angle)
-	local z = v.z
-	return Vector( x, y, z )
-end
-function Vector.rotateY( v, angle )
-	local x = v.x * math.cos(angle) + v.z * math.sin(angle)
-	local y = v.y
-	local z = -v.x * math.sin(angle) + v.z * math.cos(angle)
-	return Vector( x, y, z )
-end
-function Vector.rotateZ( v, angle )
-	local x = v.x
-	local y = v.y * math.cos(angle) - v.z * math.sin(angle)
-	local z = v.y * math.sin(angle) + v.z * math.cos(angle)
-	return Vector( x, y, z )
-end
-function Vector.average(v)
-	return v.items:reduce(function(a,b) return a+b end) / #v.items
-end
-function Vector.fromAngle(angle)
-	return Vector( math.cos(angle), math.sin(angle) )
-end
-function Vector.fromAngles3D( theta, phi )
-	local x = math.sin(theta) * math.cos(phi)
-	local y = math.sin(theta) * math.sin(phi)
-	local z = math.cos(theta)
-	return Vector( x, y, z )
-end
-function Vector.random(n)
-	return Vector( table.unpack(List.from(n or 2, function() return math.random() end)) )
-end
-function Vector.random2DAngle()
-	return Vector.fromAngle( math.random()*math.pi*2 )
-end
-function Vector.random3DAngles()
-	return Vector.fromAngles3D( math.acos( 1 - 2*math.random() ), math.random()*math.pi*2 )
-end
+Vector.map = {
+	x = 1, r = 1, h = 1,
+	y = 2, g = 2, s = 2,
+	z = 3, b = 3, l = 3,
+	a = 4,
+}
 
+Vector.__index = Vector
+Vector.__name = "Vector"
 
-
-Vector.mt.__name = "Vector"
-
-Vector.mt.__index = function(self, k)
+Vector.__index = function(self, k)
 	if type(k) == "number" then
 		return self.items[k]
 	elseif Vector.map[k] then
@@ -257,7 +156,7 @@ Vector.mt.__index = function(self, k)
 		return Vector[k] -- Default behaviour
 	end
 end
-Vector.mt.__newindex = function(self, k, v)
+Vector.__newindex = function(self, k, v)
 	if type(k) == "number" then
 		self.items[k] = v
 	elseif Vector.map[k] then
@@ -266,16 +165,16 @@ Vector.mt.__newindex = function(self, k, v)
 		self[k] = v -- Default behaviour
 	end
 end
-Vector.mt.__tostring = function(self)
+Vector.__tostring = function(self)
 	return "Vector ["..table.concat(self.items, ", ").."]"
 end
 
-Vector.mt.__add = Vector.add
-Vector.mt.__sub = Vector.subtract
-Vector.mt.__mul = Vector.multiply
-Vector.mt.__div = Vector.divide
-Vector.mt.__unm = function(v) return Vector.multiply(v, -1) end
-Vector.mt.__eq = Vector.equals
+Vector.__add = Vector.add
+Vector.__sub = Vector.subtract
+Vector.__mul = Vector.multiply
+Vector.__div = Vector.divide
+Vector.__unm = Vector.negative
+Vector.__eq = Vector.equals
 
 
 
