@@ -1,3 +1,5 @@
+local Colour = require "lib.Colour"
+
 local Ray = {}
 
 

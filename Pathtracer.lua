@@ -1,5 +1,6 @@
 local Worker = require "Worker"
 local Colour = require "lib.Colour"
+local Canvas = require "lib.Canvas"
 
 local Pathtracer = {}
 
@@ -67,8 +68,8 @@ function Pathtracer:render(canvas, options)
 			-- Draw the buffer to the canvas
 			if options.onlyFinal and self.running == 0 then
 				self:draw(canvas, options.scale, self.iterations/self.workers.length) -- Do a full draw
-			elseif not onlyFinal then
-				self:draw(canvas, options.scale, e.data.iterations, sx, sy, w, h)
+			elseif not options.onlyFinal then
+				self:draw(canvas, options.scale, data.iterations, sx, sy, w, h)
 			end
 		end
 		
@@ -80,16 +81,25 @@ end
 
 function Pathtracer:stop()
 	for _, worker in ipairs(self.workers) do
-		worker.stop()
+		worker:stop()
 	end
 end
 
-function Pathtracer:result(data)
-	
+function Pathtracer:result(buffer, ox, oy)
+	for x = 1, #buffer do
+		for y = 1, #buffer[x] do
+			self.buffer[x+ox][y+oy].add(Colour(buffer[x][y].items))
+		end
+	end
 end
 
-function Pathtracer:draw(image, scale, iterations, sx, sy, sw, sh)
-	
+function Pathtracer:draw(canvas, scale, iterations, sx, sy, sw, sh)
+	local weight = Colour(1 / iterations)
+	Canvas.draw(
+		self.buffer, canvas,
+		function(pixel) return Colour.multiply(pixel, weight).rgb255() end,
+		scale, sx or 0, sy or 0, sw or self.width, sh or self.height
+	)
 end
 
 function Pathtracer:displayProgress(nIterations)
@@ -97,6 +107,7 @@ function Pathtracer:displayProgress(nIterations)
 	if nIterations then
 		str = str.." - "..math.floor(self.iterations / nIterations / #self.workers * 100).."%"
 	end
+	print(str)
 end
 
 

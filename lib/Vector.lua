@@ -25,12 +25,12 @@ end
 
 
 function Vector:negative()
-	self.items = self.items:map(function(val) return -v end)
+	self.items = self.items:map(function(val) return -val end)
 	return self
 end
 
 function Vector:add(v)
-	if getmetatable(v).__name == "Vector" then
+	if getmetatable(v) == Vector.mt then
 		self.items = self.items:map(function(val, i) return val+v.items[i] end)
 	else
 		self.items = self.items:map(function(val) return val+v end)
@@ -38,7 +38,7 @@ function Vector:add(v)
 	return self
 end
 function Vector:subtract(v)
-	if getmetatable(v).__name == "Vector" then
+	if getmetatable(v) == Vector.mt then
 		self.items = self.items:map(function(val, i) return val-v.items[i] end)
 	else
 		self.items = self.items:map(function(val) return val-v end)
@@ -46,7 +46,7 @@ function Vector:subtract(v)
 	return self
 end
 function Vector:multiply(v)
-	if getmetatable(v).__name == "Vector" then
+	if getmetatable(v) == Vector.mt then
 		self.items = self.items:map(function(val, i) return val*v.items[i] end)
 	else
 		self.items = self.items:map(function(val) return val*v end)
@@ -54,7 +54,7 @@ function Vector:multiply(v)
 	return self
 end
 function Vector:divide(v)
-	if getmetatable(v).__name == "Vector" then
+	if getmetatable(v) == Vector.mt then
 		self.items = self.items:map(function(val, i) return (v.items[i] ~= 0) and val/v.items[i] or val end)
 	else
 		self.items = self.items:map(function(val) return (v ~= 0) and val/v or val end)
@@ -62,7 +62,7 @@ function Vector:divide(v)
 	return self
 end
 function Vector:equals(v)
-	if getmetatable(v).__name ~= "Vector" or #v.items ~= #self.items then
+	if getmetatable(v) ~= Vector.mt or #v.items ~= #self.items then
 		return false
 	end
 	return self.items:every(function(val, i) return val == v.items[i] end)
@@ -176,7 +176,7 @@ function Vector.equals( a, b )
 	return a.items:every(function(val, i) return val == b.items[i] end)
 end
 function Vector.dot( a, b )
-	return a.items:map(function(val, i) return val*b.items[i] end):reduce(function(a,b) return a+b end)
+	return a.items:map(function(val, i) return val*b.items[i] end):reduce(function(x,y) return x+y end)
 end
 function Vector.cross2( a, b )
 	return a.x * b.y - a.y * b.x
@@ -191,7 +191,7 @@ function Vector.normalize(v)
 	return Vector.divide( v, v:length() )
 end
 function Vector.distSq( a, b )
-	return a.items:map(function(val, i) return (val-b.items[i])^2 end):reduce(function(a,b) return a+b end)
+	return a.items:map(function(val, i) return (val-b.items[i])^2 end):reduce(function(x,y) return x+y end)
 end
 function Vector.dist( a, b )
 	return math.sqrt( Vector.distSq(a, b) )
@@ -245,6 +245,8 @@ function Vector.random3DAngles()
 end
 
 
+
+Vector.mt.__name = "Vector"
 
 Vector.mt.__index = function(self, k)
 	if type(k) == "number" then

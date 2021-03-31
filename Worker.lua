@@ -27,6 +27,10 @@ function Worker:render(nBounces, batchSize, width, height, sx, sy, sw, sh)
 	end
 end
 
+function Worker:stop()
+	
+end
+
 
 
 return setmetatable(Worker, {

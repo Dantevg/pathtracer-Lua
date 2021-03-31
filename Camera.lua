@@ -1,4 +1,5 @@
 local Colour = require "lib.Colour"
+local Vector = require "lib.Vector"
 local Plane = require "shapes.Plane"
 local Null = require "Null"
 local Ray = require "Ray"
